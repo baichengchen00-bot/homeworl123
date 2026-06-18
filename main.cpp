@@ -6,6 +6,7 @@
 #include <ctime>
 #include <limits>
 #include <sstream>
+#include <cstdlib>
 
 #include "Transaction.h"
 #include "ExpenseTracker.h"
@@ -63,6 +64,11 @@ void showMenu() {
 }
 
 int main() {
+#ifdef _WIN32
+    // 設定 Windows 終端機編碼為 UTF-8 (65001)，防範中文亂碼
+    std::system("chcp 65001 > nul");
+#endif
+
     // 初始化記帳本，存檔檔案名稱設為 records.txt
     ExpenseTracker tracker("records.txt");
     
