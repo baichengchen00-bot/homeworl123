@@ -1,12 +1,14 @@
 #include <iostream>
-#include <vector>
 #include <string>
 #include <memory>
-#include <fstream>
-#include <sstream>
 #include <iomanip>
 #include <algorithm>
 #include <ctime>
+#include <limits>
+#include <sstream>
+
+#include "Transaction.h"
+#include "ExpenseTracker.h"
 
 // ==========================================
 // 輔助函式：取得今日日期與清理輸入緩衝區
@@ -23,7 +25,6 @@ std::string getTodayDate() {
 
 void clearInputBuffer() {
     std::cin.clear();
-    // 忽略緩衝區中的所有字元，直到換行符
     std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
 }
 
@@ -45,198 +46,7 @@ std::string sanitizeString(std::string str) {
 }
 
 // ==========================================
-// 迭代一：建立資料模型 (C++ 類別繼承與多型)
-// ==========================================
-
-// 抽象基礎類別 (Base Class)
-class Transaction {
-protected:
-    std::string date;
-    std::string category;
-    double amount;
-    std::string note;
-
-public:
-    Transaction(std::string d, std::string c, double a, std::string n)
-        : date(d), category(c), amount(a), note(n) {}
-
-    virtual ~Transaction() {} // 虛擬解構子，確保衍生類別記憶體安全釋放
-
-    // 純虛擬函式 (Pure Virtual Functions) 實現多型
-    virtual std::string getType() const = 0;
-    virtual void display() const = 0;
-    virtual std::string serialize() const = 0;
-
-    // Getter 函式
-    std::string getDate() const { return date; }
-    std::string getCategory() const { return category; }
-    double getAmount() const { return amount; }
-    std::string getNote() const { return note; }
-};
-
-// 衍生類別：收入 (Derived Class: Income)
-class Income : public Transaction {
-public:
-    Income(std::string d, std::string c, double a, std::string n)
-        : Transaction(d, c, a, n) {}
-
-    std::string getType() const override {
-        return "Income";
-    }
-
-    void display() const override {
-        // 綠色高亮顯示收入字樣
-        std::cout << "\033[32m[收入]\033[0m "
-                  << std::setw(12) << std::left << date
-                  << " | 分類: " << std::setw(12) << std::left << category
-                  << " | 金額: " << std::setw(10) << std::left << ("+" + std::to_string(amount))
-                  << " | 備註: " << note << std::endl;
-    }
-
-    std::string serialize() const override {
-        return "INCOME|" + date + "|" + category + "|" + std::to_string(amount) + "|" + note;
-    }
-};
-
-// 衍生類別：支出 (Derived Class: Expense)
-class Expense : public Transaction {
-public:
-    Expense(std::string d, std::string c, double a, std::string n)
-        : Transaction(d, c, a, n) {}
-
-    std::string getType() const override {
-        return "Expense";
-    }
-
-    void display() const override {
-        // 紅色高亮顯示支出字樣
-        std::cout << "\033[31m[支出]\033[0m "
-                  << std::setw(12) << std::left << date
-                  << " | 分類: " << std::setw(12) << std::left << category
-                  << " | 金額: " << std::setw(10) << std::left << ("-" + std::to_string(amount))
-                  << " | 備註: " << note << std::endl;
-    }
-
-    std::string serialize() const override {
-        return "EXPENSE|" + date + "|" + category + "|" + std::to_string(amount) + "|" + note;
-    }
-};
-
-// ==========================================
-// 迭代二：實作 `ExpenseTracker` 核心管理器與檔案 I/O
-// ==========================================
-class ExpenseTracker {
-private:
-    // 使用 STL std::vector 與 std::unique_ptr 進行記憶體自動管理
-    std::vector<std::unique_ptr<Transaction>> transactions;
-    std::string dataFile;
-
-public:
-    ExpenseTracker(std::string filename) : dataFile(filename) {}
-
-    // 新增帳目
-    void addTransaction(std::unique_ptr<Transaction> t) {
-        transactions.push_back(std::move(t)); // 移轉 unique_ptr 所有權
-    }
-
-    // 刪除帳目 (以 0-based 索引刪除)
-    bool deleteTransaction(size_t index) {
-        if (index >= transactions.size()) {
-            return false;
-        }
-        transactions.erase(transactions.begin() + index);
-        return true;
-    }
-
-    // 取得帳目總數
-    size_t getTransactionsSize() const {
-        return transactions.size();
-    }
-
-    // 查看所有紀錄
-    void viewTransactions() const {
-        if (transactions.empty()) {
-            std::cout << "\033[33m目前沒有任何記帳紀錄！\033[0m" << std::endl;
-            return;
-        }
-
-        std::cout << std::string(70, '-') << std::endl;
-        std::cout << std::setw(6) << std::left << "編號" << " | 類型   | 日期         | 分類         | 金額       | 備註" << std::endl;
-        std::cout << std::string(70, '-') << std::endl;
-
-        for (size_t i = 0; i < transactions.size(); ++i) {
-            std::cout << std::setw(6) << std::left << (i + 1) << " | ";
-            transactions[i]->display();
-        }
-        std::cout << std::string(70, '-') << std::endl;
-    }
-
-    // 計算財務摘要
-    void calculateSummary(double& totalIncome, double& totalExpense) const {
-        totalIncome = 0.0;
-        totalExpense = 0.0;
-        for (const auto& t : transactions) {
-            if (t->getType() == "Income") {
-                totalIncome += t->getAmount();
-            } else if (t->getType() == "Expense") {
-                totalExpense += t->getAmount();
-            }
-        }
-    }
-
-    // 寫檔功能 (Save)
-    bool saveToFile() const {
-        std::ofstream outFile(dataFile);
-        if (!outFile) {
-            return false;
-        }
-        for (const auto& t : transactions) {
-            outFile << t->serialize() << "\n";
-        }
-        return true;
-    }
-
-    // 讀檔功能 (Load)
-    bool loadFromFile() {
-        std::ifstream inFile(dataFile);
-        if (!inFile) {
-            // 檔案不存在不視為錯誤，只代表是新啟動無舊資料
-            return false;
-        }
-
-        transactions.clear(); // 清空舊資料
-        std::string line;
-        while (std::getline(inFile, line)) {
-            if (line.empty()) continue;
-
-            std::stringstream ss(line);
-            std::string type, date, category, amountStr, note;
-
-            std::getline(ss, type, '|');
-            std::getline(ss, date, '|');
-            std::getline(ss, category, '|');
-            std::getline(ss, amountStr, '|');
-            std::getline(ss, note, '|');
-
-            double amount = 0.0;
-            try {
-                amount = std::stod(amountStr);
-            } catch (...) {
-                continue; // 金額解析錯誤則跳過該行
-            }
-
-            if (type == "INCOME") {
-                transactions.push_back(std::unique_ptr<Transaction>(new Income(date, category, amount, note)));
-            } else if (type == "EXPENSE") {
-                transactions.push_back(std::unique_ptr<Transaction>(new Expense(date, category, amount, note)));
-            }
-        }
-        return true;
-    }
-};
-
-// ==========================================
-// 迭代三：打造終端機 UI 互動選單 (防呆輸入)
+// 打造終端機 UI 互動選單 (防呆輸入)
 // ==========================================
 void showMenu() {
     std::cout << "\n\033[36m==================================================\033[0m" << std::endl;

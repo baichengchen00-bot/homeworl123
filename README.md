@@ -1,6 +1,23 @@
-# C++ 個人簡易記帳本專題說明書 & 使用手冊
+# C++ 個人簡易記帳本專題說明書 & 使用手冊 (模組化多檔案版)
 
-本專案是一個基於 C++ 語言開發的命令列（Terminal）個人記帳應用程式，旨在提供直覺、高效的本地記帳功能。專案在開發中深度整合了物件導向設計 (OOP) 的核心原則，包含繼承、多型與封裝，並使用 C++ 標準模板庫 (STL) 的容器與智慧指標，保障記憶體管理的安全性與程式碼的健壯性。
+本專案是一個基於 C++ 語言開發的命令列（Terminal）個人記帳應用程式，旨在提供直覺、高效的本地記帳功能。專案採用**模組化多檔案 (Multi-file)** 架構開發，深度整合了物件導向設計 (OOP) 的核心原則，包含繼承、多型與封裝，並使用 C++ 標準模板庫 (STL) 的容器與智慧指標，保障記憶體管理的安全性與程式碼的健壯性。
+
+---
+
+## 📂 專案檔案結構
+
+為了提高程式碼的清晰度與維護效率，本專案已完成模組化拆分：
+
+```text
+c:\Users\STUST\Documents\w2\
+├── main.cpp                # 主程式進入點，包含終端機選單與互動式操作迴圈
+├── Transaction.h           # 宣告交易基礎類別 Transaction 與衍生類別 Income, Expense
+├── Transaction.cpp         # 實作 Transaction、Income 與 Expense 的建構子與成員函式
+├── ExpenseTracker.h        # 宣告記帳管理器類別 ExpenseTracker
+├── ExpenseTracker.cpp      # 實作記帳管理器的新增、刪除、統計與檔案 I/O
+├── records.txt             # 自動生成的資料存檔檔 (使用管道字元 '|' 分隔)
+└── .gitignore              # 忽略編譯產出的二進位執行檔 (*.exe)
+```
 
 ---
 
@@ -55,24 +72,22 @@
 graph TD
     A[迭代一: 建立資料模型與多型繼承] --> B[迭代二: 實作 Manager 核心與檔案 I/O]
     B --> C[迭代三: 實作終端機選單與防呆輸入]
-    C --> D[迭代四: 撰寫專題規格文件與使用手冊]
-    D --> E[驗證階段: g++ 編譯與全功能測試]
+    C --> D[迭代四: 模組化多檔案拆分與文件撰寫]
+    D --> E[驗證階段: 多檔案編譯與功能測試]
 ```
 
 1.  **第一迭代：資料模型建立**
     *   實作抽象基底類別 `Transaction`。
     *   衍生 `Income` 與 `Expense` 類別，確保虛擬解構子正確運作。
 2.  **第二迭代：核心管理器與檔案讀寫**
-    *   實作 `ExpenseTracker` 類別。
-    *   運用 `std::vector` 及 `std::unique_ptr` 儲存多型物件。
-    *   編寫 `saveToFile` 及 `loadFromFile` 以管道字元 `|` 為格式讀寫資料檔。
+    *   實作 `ExpenseTracker` 類別，運用 `std::vector` 及 `std::unique_ptr` 儲存多型物件。
+    *   編寫 `saveToFile` 及 `loadFromFile` 讀寫資料檔。
 3.  **第三迭代：文字介面與輸入安全防護**
-    *   建立互動選單主迴圈。
-    *   實作 `clearInputBuffer()` 解決輸入型態不符（例如在需要輸入金額時輸入英文字母）會產生的輸入串流崩潰問題。
-    *   使用 ANSI Escape Codes 加入顏色美化（綠色收入、紅色支出、黃色警示、青色框線）。
-4.  **第四迭代：文件與整理**
-    *   整理原始碼，確保命名規則（Camel Case/Pascal Case）與排版整潔。
-    *   撰寫此說明書。
+    *   建立互動選單主迴圈，實作 `clearInputBuffer()` 解決輸入型態不符產生的崩潰問題。
+    *   使用 ANSI Escape Codes 加入顏色美化（綠色收入、紅色支出）。
+4.  **第四迭代：模組化多檔案重構**
+    *   將單一檔案 `main.cpp` 拆解為 `Transaction`、`ExpenseTracker` 的標頭檔 (`.h`) 與實作檔 (`.cpp`)。
+    *   主程式僅保留互動流程，建立高維護價值的專案目錄。
 
 ---
 
@@ -82,9 +97,9 @@ graph TD
 *   您的電腦中必須裝有 C++ 編譯器（如 `g++`）。本專案使用 `MinGW GCC 6.3.0` 進行測試，完全相容於 C++11 規格。
 
 ### 編譯指令
-打開終端機（cmd 或 PowerShell），切換至專案資料夾後，執行以下指令：
+打開終端機（cmd 或 PowerShell），切換至專案資料夾後，執行以下指令（需要編譯所有的 `.cpp` 檔案）：
 ```bash
-g++ -std=c++11 main.cpp -o tracker.exe
+g++ -std=c++11 main.cpp Transaction.cpp ExpenseTracker.cpp -o tracker.exe
 ```
 
 ### 執行程式
